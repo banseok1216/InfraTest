@@ -1,12 +1,15 @@
-from flask import Flask, request, jsonify, json
+from flask import Flask, request, jsonify
+from apscheduler.schedulers.background import BackgroundScheduler
 import pika
+import json
 
 app = Flask(__name__)
 
 
 def send_to_rabbitmq(hardware_info, software_info):
     # RabbitMQ 서비스에 연결
-    connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq.rabbitmq', 5672, credentials=pika.PlainCredentials('admin', 'admin')))
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters('rabbitmq.rabbitmq', 5672, credentials=pika.PlainCredentials('admin', 'admin')))
     channel = connection.channel()
 
     # 큐(Queue) 선언
@@ -17,19 +20,21 @@ def send_to_rabbitmq(hardware_info, software_info):
 
     # 연결 종료
     connection.close()
-@app.route('/hardware_software_info', methods=['POST'])
-def receive_hardware_software_info():
+
+
+def job():
     try:
-        data = request.get_json()
-        hardware_info = data.get('hardware_info')
-        software_info = data.get('software_info')
-        if hardware_info and software_info:
-            # RabbitMQ로 데이터 전송
-            send_to_rabbitmq(hardware_info, software_info)
-            # 성공 응답 반환
-            return jsonify({"message": "success"}), 200
+        with open('/data/hardware_info.txt', 'r') as hardware_file:
+            hardware_info = hardware_file.read()
+        with open('/data/software_info.txt', 'r') as software_file:
+            software_info = software_file.read()
+        send_to_rabbitmq(hardware_info, software_info)
     except Exception as e:
-        # 예외가 발생한 경우 오류 응답 반환
-        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+        print(f"데이터 읽기 실패: {str(e)}")
+
+schedule = BackgroundScheduler(daemon=True, timezone='Asia/Seoul')
+schedule.add_job(job, 'interval', seconds=3)
+schedule.start()
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
