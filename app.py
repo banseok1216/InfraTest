@@ -4,72 +4,116 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import pika
 import json
 import os
+import time
 
 app = Flask(__name__)
 
-schedule = BackgroundScheduler(daemon=True, timezone='Asia/Seoul')
-def send_to_rabbitmq(key, info):
+scheduler = BackgroundScheduler(daemon=True, timezone='Asia/Seoul')
+
+# 경로 상수 정의
+HARDWARE_INFO_PATH = '/data/hardware_info.txt'
+SOFTWARE_INFO_PATH = '/data/software_info.txt'
+PROC_STAT_PATH = '/proc/stat'
+MEMINFO_PATH = '/proc/meminfo'
+
+
+def send_to_rabbitmq(queue, data):
+    """Send data to RabbitMQ."""
     try:
-        # RabbitMQ 서비스에 연결
         connection = pika.BlockingConnection(
-            pika.ConnectionParameters('rabbitmq.rabbitmq', 5672, credentials=pika.PlainCredentials('admin', 'admin')))
+            pika.ConnectionParameters('rabbitmq.rabbitmq', 5672, credentials=pika.PlainCredentials('admin', 'admin'))
+        )
         channel = connection.channel()
-
-        channel.queue_declare(queue='monitoring')
-
-        channel.basic_publish(exchange='direct', routing_key=key, body=json.dumps(info))
-
+        channel.queue_declare(queue=queue)
+        channel.basic_publish(exchange='direct', routing_key=queue, body=json.dumps(data))
         connection.close()
     except Exception as e:
-        print(f"RabbitMQ 연결 실패: {str(e)}")
+        print(f"Failed to connect to RabbitMQ: {str(e)}")
+
+
+def read_resource_file(file_path):
+    """Read content from a file."""
+    try:
+        with open(file_path, 'r') as file:
+            return file.read()
+    except Exception as e:
+        print(f"Failed to read file {file_path}: {str(e)}")
+        return None
 
 
 def resource_job():
-    try:
-        with open('/data/hardware_info.txt', 'r') as hardware_file:
-            hardware_info = hardware_file.read()
+    """Read hardware and software info and send to RabbitMQ."""
+    hardware_info = read_resource_file(HARDWARE_INFO_PATH)
+    if hardware_info:
         send_to_rabbitmq("hardware_info_queue", hardware_info)
-        with open('/data/software_info.txt', 'r') as software_file:
-            software_info = software_file.read()
+
+    software_info = read_resource_file(SOFTWARE_INFO_PATH)
+    if software_info:
         send_to_rabbitmq("software_info_queue", software_info)
-    except Exception as e:
-        print(f"데이터 읽기 실패: {str(e)}")
+
+
+def calculate_memory_usage():
+    """Calculate memory usage percentage."""
+    with open(MEMINFO_PATH, 'r') as f:
+        meminfo = f.readlines()
+    mem_total = int(meminfo[0].split()[1])
+    mem_available = int(meminfo[2].split()[1])
+    memory_usage = ((mem_total - mem_available) / mem_total) * 100
+    return memory_usage
+
+
+def calculate_disk_usage():
+    """Calculate disk usage percentage."""
+    statvfs = os.statvfs('/')
+    disk_total = statvfs.f_frsize * statvfs.f_blocks
+    disk_free = statvfs.f_frsize * statvfs.f_bfree
+    disk_used = disk_total - disk_free
+    disk_usage = (disk_used / disk_total) * 100
+    return disk_usage
+
+
+def read_cpu_stat():
+    """Read CPU statistics from /proc/stat."""
+    with open(PROC_STAT_PATH, 'r') as f:
+        lines = f.readlines()
+    line = lines[0]
+    parts = line.split()
+    total = sum(int(part) for part in parts[1:])
+    idle = int(parts[4])
+    return total, idle
+
+
+previous_total, previous_idle = read_cpu_stat()
+
+
+def calculate_cpu_usage():
+    """Calculate CPU usage percentage."""
+    global previous_total, previous_idle
+    current_total, current_idle = read_cpu_stat()
+    total_diff = current_total - previous_total
+    idle_diff = current_idle - previous_idle
+    usage = (total_diff - idle_diff) / total_diff * 100
+    previous_total, previous_idle = current_total, current_idle
+    return usage
 
 
 def system_info_job():
+    """Collect and send system info."""
     try:
-        files = os.listdir('/data/system')
-        # 가장 최근 파일 선택
-        latest_file = max(files, key=os.path.getctime)
-        # 파일 경로
-        file_path = os.path.join('/data/system', latest_file)
-        # 파일 읽기
-        with open(file_path, 'r', encoding='utf-8') as file:
-            system_info_text = file.read()
-        if parse_system_info(system_info_text):
-            schedule.modify_job('system_info_job', trigger=IntervalTrigger(minutes=10))
-        else:
-            schedule.modify_job('system_info_job', trigger=IntervalTrigger(minutes=5))
+        cpu_usage = calculate_cpu_usage()
+        memory_usage = calculate_memory_usage()
+        disk_usage = calculate_disk_usage()
+        send_to_rabbitmq("system_info", {cpu_usage, memory_usage, disk_usage})
+
     except Exception as e:
-        print(f"시스템 정보 읽기 및 처리 실패: {str(e)}")
+        print(f"Failed to collect or process system info: {str(e)}")
 
-def parse_system_info(system_info_text):
-    lines = system_info_text.split('\n')
-    for line in lines:
-        if line.startswith('CPU 사용율:'):
-            if float(line.split(': ')[1].strip('%')) > 80:
-                return False
-        elif line.startswith('메모리 사용율:'):
-            if float(line.split(': ')[1].strip('%')) > 80:
-                return False
-        elif line.startswith('디스크 사용율:'):
-            if float(line.split(': ')[1].strip('%')) > 80:
-                return False
-    return True
 
-schedule.add_job(system_info_job, IntervalTrigger(minutes=10), id='system_info_job')
-schedule.add_job(resource_job, IntervalTrigger(minutes=30), id='resource_job')
-schedule.start()
+scheduler.add_job(system_info_job, IntervalTrigger(minutes=5), id='system_info_job')
+scheduler.add_job(resource_job, IntervalTrigger(hours=1), id='resource_job')
+
+# Start the scheduler
+scheduler.start()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
