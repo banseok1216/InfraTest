@@ -13,12 +13,8 @@ spec:
     volumeMounts:
     - name: host-system-info-volume
       mountPath: /host-data
-    - name: host-proc-volume
-      mountPath: /host-proc
+      readOnly: true
   volumes:
   - name: host-system-info-volume
     hostPath:
-      path: /root
-  - name: host-proc-volume
-    hostPath:
-      path: /proc
+      path: /home/admin/batch/log
