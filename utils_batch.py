@@ -1,4 +1,3 @@
-# utils_batch.py
 
 import os
 import subprocess
@@ -20,8 +19,7 @@ def write_to_log(log_file, message):
             file.write(message + "\n\n")
         print(f"{os.path.basename(log_file)} 파일에 정보를 기록했습니다.", file=sys.stdout)
     except Exception as e:
-        error_message = (f"시간: {datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}\n"
-                         f"{os.path.basename(log_file)} 파일 생성 중 예외 발생: {e}")
+        error_message = f"{os.path.basename(log_file)} 파일 생성 중 예외 발생: {e}"
         print(error_message, file=sys.stderr)
 
 

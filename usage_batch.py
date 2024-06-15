@@ -30,7 +30,7 @@ def job():
 
     message = f"{cpu_usage}\n\n디스크 사용률:\n{disk_usage}\n\n{mem_usage}"
 
-    log_file = generate_log_file_name(LOG_DIR, "usage_info")  # LOG_DIR와 prefix 인자 필요
+    log_file = generate_log_file_name(LOG_DIR, "usage_info")
     write_to_log(log_file, message)
 
 if __name__ == "__main__":
