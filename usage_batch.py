@@ -23,7 +23,7 @@ def get_memory_usage():
 
 def job():
     """작업 수행 함수"""
-    ensure_log_directory(LOG_DIR)  # LOG_DIR 인자 필요
+    ensure_log_directory(LOG_DIR)
     cpu_usage = get_cpu_usage()
     disk_usage = get_disk_usage()
     mem_usage = get_memory_usage()

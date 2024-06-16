@@ -1,20 +1,27 @@
 apiVersion: v1
-kind: Pod
+kind: DaemonSet
 metadata:
-  name: infra-api
+  name: infra-api-daemonset
 spec:
-  nodeName: kind-worker3
-  containers:
-  - name: infra-api
-    image: infra-api:latest
-    imagePullPolicy: Never
-    ports:
-    - containerPort: 80
-    volumeMounts:
-    - name: host-system-info-volume
-      mountPath: /host-data
-      readOnly: true
-  volumes:
-  - name: host-system-info-volume
-    hostPath:
-      path: /home/admin/batch/log
+  selector:
+    matchLabels:
+      name: infra-api
+  template:
+    metadata:
+      labels:
+        name: infra-api
+    spec:
+      containers:
+      - name: infra-api
+        image: infra-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: host-system-info-volume
+          mountPath: /host-data
+          readOnly: true
+      volumes:
+      - name: host-system-info-volume
+        hostPath:
+          path: /home/admin/batch/log

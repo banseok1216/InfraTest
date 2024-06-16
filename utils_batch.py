@@ -1,6 +1,5 @@
 
 import os
-import subprocess
 from datetime import datetime
 import sys
 
@@ -27,12 +26,3 @@ def generate_log_file_name(log_dir, prefix):
     """로그 파일 이름을 생성하는 함수"""
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     return f"{log_dir}/{prefix}_log_{timestamp}.txt"
-
-
-def run_command(command):
-    """명령어를 실행하고 결과를 반환하는 함수"""
-    try:
-        output = subprocess.check_output(command, shell=True, universal_newlines=True, stderr=subprocess.STDOUT)
-        return output.strip()
-    except Exception as e:
-        return str(e)

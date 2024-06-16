@@ -7,7 +7,12 @@ HARDWARE_LOG_DIR = '/home/admin/batch/log/hardware'
 def run_command(command):
     """명령어를 실행하고 결과를 반환하는 함수"""
     try:
-        output = subprocess.check_output(command, shell=True, universal_newlines=True, stderr=subprocess.STDOUT)
+        output = subprocess.check_output(
+            command,
+            shell=True,
+            text=True,
+            stderr=subprocess.STDOUT
+        )
         return output.strip()
     except Exception as e:
         return str(e)
