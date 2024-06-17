@@ -15,8 +15,6 @@ spec:
       - name: infra-api
         image: infra-api:latest
         imagePullPolicy: Never
-        ports:
-        - containerPort: 80
         volumeMounts:
         - name: host-system-info-volume
           mountPath: /host-data

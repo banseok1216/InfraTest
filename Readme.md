@@ -28,9 +28,6 @@
 6. **헬스 체크**
    - 모니터링 서버는 1초마다 모든 워커노드에 대해 ping을 통한 health check를 수행함.
 
-## 시스템 아키텍처 다이어그램
-(다이어그램 이미지를 여기에 넣으세요)
-
 ## 참고 자료
 - [Kubernetes 공식 문서](https://kubernetes.io/docs/)
 - [RabbitMQ 공식 문서](https://www.rabbitmq.com/documentation.html)
