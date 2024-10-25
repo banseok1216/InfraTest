@@ -31,7 +31,6 @@
 ## 참고 자료
 - [Kubernetes 공식 문서](https://kubernetes.io/docs/)
 - [RabbitMQ 공식 문서](https://www.rabbitmq.com/documentation.html)
-- [Prometheus 공식 문서](https://prometheus.io/docs/)
 - [Grafana 공식 문서](https://grafana.com/docs/)
 
 이 README.md 파일은 Kubernetes 클러스터에서 health check를 수행하고 모니터링 시스템을 구성하는 데 필요한 기본 개념과 단계를 제공합니다.
